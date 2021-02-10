@@ -1,0 +1,64 @@
+function buttonToLogData() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var response = UrlFetchApp.fetch("https://api.particle.io/v1/devices/DEVICEID/temp?access_token=ACCESSTOKEN");
+  
+  try {
+    var response = JSON.parse(response.getContentText()); // parse the JSON
+    var result = unescape(response.result); // you'll need to unescape first
+
+    try {
+          var t = JSON.parse(result);
+          var d = new Date(); // time stamps are always good when taking readings
+          sheet.appendRow([d, t]); // append the date, data1, data2 to the sheet
+        }catch(e)
+    {
+      Logger.log("Unable to return JSON");
+    }
+            
+          }catch(e)
+    {
+      Logger.log("Unable to return JSON");
+    }
+}
+
+function buttonToLogAllData() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var request1 = 'https://api.particle.io/v1/devices/DEVICEID/temp?access_token=ACCESSTOKEN';
+  var request2 = 'https://api.particle.io/v1/devices/DEVICEID/thermistor?access_token=ACCESSTOKEN';
+  var request3 = 'https://api.particle.io/v1/devices/DEVICEID/humidity?access_token=ACCESSTOKEN';
+  var request4 = 'https://api.particle.io/v1/devices/DEVICEID/g?access_token=ACCESSTOKEN';
+  var request5 = 'https://api.particle.io/v1/devices/DEVICEID/object?access_token=ACCESSTOKEN';
+  var request6 = 'https://api.particle.io/v1/devices/DEVICEID/ambient?access_token=ACCESSTOKEN';
+  var responses = UrlFetchApp.fetchAll([request1, request2, request3, request4, request5, request6]);
+
+  try {
+    var res = responses.map(function(e) {return JSON.parse(e.getContentText())});
+
+    var t = new Array(res.length);
+    var d = new Date();
+
+    t[0] = d;
+    for (i=0;i<res.length;i++) {
+      var result = unescape(res[i].result);
+      try {
+        t[i+1] = JSON.parse(result);
+      }catch(e) {
+        Logger.log("Unable to return JSON");
+      }
+    }
+
+    sheet.appendRow(t); // append the date, data1, data2 to the sheet
+            
+  }catch(e)    {
+      Logger.log("Unable to return JSON");
+  }
+}
+
+function onEdit_Special(e) {
+  if (e.range.getA1Notation() == 'A1') {
+    if (/^\w+$/.test(e.value)) {        
+      eval(e.value)();
+      e.range.clear();
+    }
+  }
+}
