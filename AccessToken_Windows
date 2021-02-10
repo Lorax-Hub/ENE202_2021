@@ -1,0 +1,5 @@
+curl https://api.particle.io/oauth/token ^
+-u particle:particle ^
+-d granttype=password ^
+--data-urlencode "username=joe@example.com" ^
+--data-urlencode "password=SuperSecret"
