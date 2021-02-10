@@ -1,0 +1,33 @@
+function test() {
+  var e = {};
+  e.parameter = {};
+  e.parameter.event = 'sheetLoraxTestCode';
+  e.parameter.data = '[1,1234]';
+  e.parameter.coreid = '1f0030001647ffffffffffff';
+  e.parameter.published_at = new Date().toISOString();
+  doPost(e);
+}
+
+function doPost(e) {
+  var publishedAt = new Date(e.parameter.published_at);
+
+  var dataArray = [];
+  try {
+    dataArray = JSON.parse(e.parameter.data);
+  }
+  catch(e) {
+  }
+
+  var sheet = SpreadsheetApp.getActiveSheet();
+
+  var row = [e.parameter.coreid, publishedAt];
+
+  row = row.concat(dataArray);
+
+  sheet.appendRow(row);
+  
+  var result = {};
+  result.ok = true;
+
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
