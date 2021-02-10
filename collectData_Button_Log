@@ -1,0 +1,30 @@
+function collectData() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var response = UrlFetchApp.fetch("https://api.particle.io/v1/devices/DEVICEID/temp?access_token=ACCESSTOKEN");
+  try {
+    var response = JSON.parse(response.getContentText()); // parse the JSON
+    var result = unescape(response.result); // you'll need to unescape first
+
+    try {
+          var t = JSON.parse(result);
+          var d = new Date(); // time stamps are always good when taking readings
+          sheet.appendRow([d, t]); // append the date, data1, data2 to the sheet
+        }catch(e)
+    {
+      Logger.log("Unable to return JSON");
+    }
+            
+          }catch(e)
+    {
+      Logger.log("Unable to return JSON");
+    }
+}
+
+function onEdit_Special(e) {
+  if (e.range.getA1Notation() == 'A1') {
+    if (/^\w+$/.test(e.value)) {        
+      eval(e.value)();
+      e.range.clear();
+    }
+  }
+}
