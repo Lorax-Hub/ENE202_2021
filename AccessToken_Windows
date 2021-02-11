@@ -3,3 +3,10 @@ curl https://api.particle.io/oauth/token ^
 -d grant_type=password ^
 --data-urlencode "username=joe@example.com" ^
 --data-urlencode "password=SuperSecret"
+
+
+
+
+
+// in the case of a certificate revocation error, please change the first line to:
+curl https://api.particle.io/oauth/token --ssl-no-revoke ^
