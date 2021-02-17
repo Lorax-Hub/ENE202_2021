@@ -1,0 +1,56 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <Adafruit_MLX90614.h>
+
+
+/*************************************************** 
+  This is a library example for the MLX90614 Temp Sensor
+
+  Designed specifically to work with the MLX90614 sensors in the
+  adafruit shop
+  ----> https://www.adafruit.com/products/1748
+  ----> https://www.adafruit.com/products/1749
+
+  These sensors use I2C to communicate, 2 pins are required to  
+  interface
+  Adafruit invests time and resources providing this open source code, 
+  please support Adafruit and open-source hardware by purchasing 
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.  
+  BSD license, all text above must be included in any redistribution
+ ****************************************************/
+/* USER INPUT */
+int sample_rate = 2 * 1000; // how often you want device to publish where the number in front of a thousand is the seconds you want
+/**/
+
+double objectT = 0;
+double ambientT = 0;
+
+
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+
+void setup() {
+    // Experimental notes
+    Particle.variable("rate", sample_rate);  // Publish frequency
+
+    Particle.variable("object", objectT);
+    Particle.variable("ambient", ambientT);
+
+    mlx.begin();  
+}
+
+void loop() {
+    
+ambientT = mlx.readAmbientTempC();
+objectT = mlx.readObjectTempC();
+
+  /* ENCODE + PUBLISH */
+ 
+  //Particle.publish("mlx.c,2 ","object:"+String(objectT)+" ambient:"+String(ambientT)+" ");
+  
+  Particle.publish("object", String(objectT), PRIVATE);
+  Particle.publish("ambient", String(ambientT), PRIVATE);
+
+  delay(sample_rate);
+
+}
