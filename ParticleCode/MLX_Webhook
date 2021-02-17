@@ -1,0 +1,79 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <Adafruit_MLX90614.h>
+
+#include "Particle.h"
+
+/*************************************************** 
+  This is a library example for the MLX90614 Temp Sensor
+
+  Designed specifically to work with the MLX90614 sensors in the
+  adafruit shop
+  ----> https://www.adafruit.com/products/1748
+  ----> https://www.adafruit.com/products/1749
+
+  These sensors use I2C to communicate, 2 pins are required to  
+  interface
+  Adafruit invests time and resources providing this open source code, 
+  please support Adafruit and open-source hardware by purchasing 
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.  
+  BSD license, all text above must be included in any redistribution
+ ****************************************************/
+/* USER INPUT */
+int sample_rate = 2 * 1000; // how often you want device to publish to the console, in milliseconds
+int publish_rate = 30 * 1000; // how often you want device to publish to google sheets data log, in milliseconds
+const char *eventName = "LoraxArgon_Gsheets_DataLog"; // event name of webhook integration on console
+/**/
+
+unsigned long lastPublish; // timestamp of last time a Gsheets event was published
+void publishGsheetsEvent(); // function to format and publish sensor temp data to Gsheets event
+
+double objectT = 0; // declaration of variable for temperature read from an object surface with MLX90614
+double ambientT = 0; // declaration of variable for ambient temperature read with MLX90614
+
+
+Adafruit_MLX90614 mlx = Adafruit_MLX90614(); // declaration of sensor object, as a variable called mlx
+
+void setup() {
+
+    Particle.variable("console_rate", sample_rate);  // Console publish frequency variable
+    Particle.variable("webhook_rate", publish_rate); // Gsheets webhook publish frequency variable
+    
+    Particle.variable("object", objectT);
+    Particle.variable("ambient", ambientT);
+
+    mlx.begin(); // initialize the MLX90614 sensor, see Adafruit_MLX90614.cpp for more info
+}
+
+
+void loop() {
+    
+    // Only run code if Argon is connected to the Cloud
+    if (Particle.connected()) {
+        
+        // millis() gives the current system clock in milliseconds. 
+        // The if statement comparies how long it has been since the last Gsheets event to the publish rate, and runs PublishGsheetsEvent() if longer than publish_rate
+        // The advantage of this method (though more complicated and memory intensive), is that other code can run while waiting for a Gsheets publish event
+        // Conversely, delay() will not allow any other code to execute while it waits for its timer to finish.
+        if (millis() - lastPublish >= publish_rate) {
+            lastPublish = millis();
+            publishGsheetsEvent();
+        }
+        
+        ambientT = mlx.readAmbientTempC(); // read ambient temp data from sensor
+        objectT = mlx.readObjectTempC(); // read object temp data from sensor
+        
+        Particle.publish("QuickPublish", "Object Temp, "+String(objectT)+", Ambient Temp, "+String(ambientT)+" "); // Publish read data to the console
+
+        delay(sample_rate); // Wait for next sensor read point
+    }
+}
+
+// Function to format and publish temp data to the Gsheets event
+void publishGsheetsEvent() {
+    char buf[128];
+    snprintf(buf, sizeof(buf), "[%.2f,%.2f]", objectT, ambientT); // Format temp data for the google sheet
+    
+    Particle.publish(eventName, buf, PRIVATE); // Publish with the name used for the webhook integration
+}
