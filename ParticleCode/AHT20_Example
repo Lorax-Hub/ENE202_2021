@@ -1,0 +1,138 @@
+// This #include statement was automatically added by the Particle IDE.
+//#include <SparkFun_Qwiic_Humidity_AHT20_Arduino_Library.h>
+#include <SparkFun_Qwiic_Humidity_AHT20.h>
+
+
+#include <Wire.h>
+#include "math.h"
+#include <application.h>
+
+AHT20 humiditySensor;
+
+bool logging = FALSE; // set to true of you want Influx to catch the photon log to database
+int sample_rate = 10 * 1000; // how often you want device to publish, where the number in front of a thousand is the seconds you want
+/**/
+
+//optional thermistor
+#define TEMPERATURENOMINAL 25
+#define BCOEFFICIENT 3950
+#define SERIESRESISTOR 10000
+#define NUMSAMPLES 10
+
+int samples[NUMSAMPLES];
+uint8_t i;
+float average;
+int globePin = A0;
+
+double temperature = 0;
+
+
+//temperature and humidity values 
+double t = 0;
+double h = 0;
+float tF = 0;
+
+
+//constants for calculating absolute humidity
+double EPSILON = 0.62198;  // ratio of molecular weights of water and dry air
+double P_ATM = 102595.8;   // current barometric pressure, Pa - UPDATE!!!! at time of experiment
+
+
+//fit to Magnus equation Psat = C1*exp(A1*t/(B1+t)) where t is in C, outputs Pa
+double A = 17.625; //from Alduchov and Eskridge, 1996
+double B = 243.04; // degrees C
+double C = 610.94; //Pa
+
+double g = 0;
+
+void setup() {
+    Serial.begin(115200);
+  
+    Wire.begin();
+  
+    humiditySensor.begin();
+  
+    Particle.variable("rate", sample_rate);  // Publish frequency
+    Particle.variable("temp", t);
+    Particle.variable("humidity", h);
+    Particle.variable("g", g);
+    Particle.variable("thermistor", temperature);
+  }
+
+void loop() {
+    if (humiditySensor.available() == true) {
+        t = humiditySensor.getTemperature();
+        h = humiditySensor.getHumidity();
+        tF = (t* 9) /5 + 32;
+        g = absolute_H(t,h);
+        
+        temperature = therm(globePin); // read from thermistor as well
+    }
+
+  if (! isnan(t)) {  // check if 'is not a number'
+     //Temperature in C
+    Serial.print("Temp *C = "); Serial.println(t);
+    //Temperature in F
+    Serial.print("Temp *F = "); Serial.println(tF);
+  } else { 
+    Serial.println("Failed to read temperature");
+  }
+  
+  if (! isnan(h)) {  // check if 'is not a number'
+    Serial.print("Hum. % = "); Serial.println(h);
+  } else { 
+    Serial.println("Failed to read humidity");
+  }
+  
+  Serial.println();
+
+  Particle.publish("temp.C,2 hum.RH,1 g.gm,1", "airtemp:"+String(t)+" thermistor:"+String(temperature)+" humidity:"+String(h)+" abs_hum:"+String(g)+" ");
+  delay(sample_rate);
+}
+
+//helper function to compute absolute humidity
+double absolute_H(double tempC, double rh) {
+    double Psat = C*exp(A*tempC/(B+tempC));
+    double Pvap = rh/100*Psat;
+    double ah = EPSILON*Pvap/(P_ATM-Pvap)*1000; //convert to g/kg
+    return ah; //absolute humidity in g/kg
+}
+
+// This is the function that measures the voltage across the thermistor, calculates the resistance, and converts it to a temperature.
+// A number of samples are collected and averaged (specified above by NUMSAMPLES) to smooth noise
+double therm(int pin) {
+  
+  // take N samples in a row, with a slight delay
+  for (i=0; i< NUMSAMPLES; i++) {
+   samples[i] = analogRead(pin);
+   delay(10);
+  }
+ 
+  // average all the samples out
+  average = 0;
+  for (i=0; i< NUMSAMPLES; i++) {
+     average += samples[i];
+  }
+  average /= NUMSAMPLES;
+  
+  double reading = average;
+
+ 
+  // convert the value to resistance
+  reading = (4095 / reading)  - 1;     // (4095/ADC - 1) ***The ADC (Analog to Digital Converter) at pin A0 converts a voltage between 3.3V and 0V to a number between 4095 and 0.
+  reading = SERIESRESISTOR / reading;  // 10K / (4095/ADC - 1)
+  
+  //the steinart method is a standard method of mapping the resistance reading
+  //to a temperature
+  float steinhart;
+  steinhart = reading / SERIESRESISTOR;     // (R/Ro)
+  steinhart = log(steinhart);                  // ln(R/Ro)
+  steinhart /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
+  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
+  steinhart = 1.0 / steinhart;                 // Invert
+  steinhart -= 273.15;                         // convert to C
+  
+  
+//return the calculated value, which is a temperature!  
+  return steinhart;
+}
