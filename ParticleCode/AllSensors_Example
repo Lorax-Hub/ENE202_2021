@@ -63,7 +63,6 @@ void setup() {
   
     if (humiditySensor.begin() == false) {   // Set to 0x45 for alternate i2c addr
         Serial.println("Couldn't find AHT20");
-        while(1);
     }
     
     Serial.println("AHT20 achknowledged.");
@@ -78,7 +77,6 @@ void setup() {
 
     if (mlx.begin() == false) {   // Set to 0x45 for alternate i2c addr
         Serial.println("Couldn't find MLX90614");
-        while(1);
     }
     //mlx.begin();  
   }
