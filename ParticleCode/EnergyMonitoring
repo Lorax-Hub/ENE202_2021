@@ -1,0 +1,82 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <EmonLib.h>
+
+double Emon;
+double Irms;
+double power;
+double volts = 120;
+float cal;
+float calib = 1;
+
+double Modern;
+double ModernCalib = 1;
+double ModernIntercept = 0;
+double ModernReading;
+double ModernPower1=0;
+double ModernPowerPrev=0;
+double previousReading=0;
+
+
+double EmonPower1;
+EnergyMonitor emon1;
+
+double ModernCal(String command); // declare ModernCal function
+int modernPin = A3;
+
+
+
+void setup() {
+
+cal = (20 / 0.05) / 46; // CT Amps / 0.05 Amnps  /  46 Ohm
+
+
+Particle.variable("Emon_raw_Pinout",Emon);
+Particle.variable("IRms_Emon",Irms);
+Particle.variable("Emon_power",power);
+Particle.variable("Modern_power",Modern);
+Particle.variable("Modern_cal",ModernCalib);
+Particle.variable("Modern_int",ModernIntercept);
+
+Particle.function("EmonCal", EmonCal);
+Particle.function("ModernCal", ModernCal);
+
+emon1.current(A4, cal);  
+
+}
+
+void loop() {
+double output1 = analogRead(A4);
+Emon= 3.3 * output1 / 4095;
+
+Irms = emon1.calcIrms(5500);  // Calculate Irms only including number of samples
+power = volts * Irms;
+
+ModernReading = analogRead(modernPin);
+Modern = ModernReading * ModernCalib + ModernIntercept;
+
+
+Particle.publish("output", "MD_power: " + String(Modern) + " Volts: " + String(volts) + " Irms: " + String(Irms) + " Power: " + String(power));
+
+delay(3000);
+}
+
+double ModernCal(String command)
+{
+  // Parse 
+  
+  ModernPower1 = command.toFloat();
+  ModernCalib = (ModernPower1 - ModernPowerPrev) / (ModernReading - previousReading);
+  ModernIntercept = ModernPower1 - (ModernCalib * ModernReading);
+  previousReading = ModernReading;
+  ModernPowerPrev = ModernPower1; 
+  return ModernCalib;
+}
+
+float EmonCal(String command2)
+{
+  // look for the matching argument "coffee" <-- max of 64 characters long
+  float result2 = command2.toFloat();
+  cal = result2;
+  emon1.current(A4, cal);
+  return cal;
+}
