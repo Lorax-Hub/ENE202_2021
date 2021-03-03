@@ -20,14 +20,14 @@ double previousReading=0;
 double EmonPower1;
 EnergyMonitor emon1;
 
-double ModernCal(String command); // declare ModernCal function
+float ModernCal(String command); // declare ModernCal function
 int modernPin = A3;
 
 
 
 void setup() {
 
-cal = (20 / 0.05) / 46; // CT Amps / 0.05 Amnps  /  46 Ohm
+cal = (20 / 0.05) / 46; // CT Amps / 0.05 Amnps  /  22 Ohm
 
 
 Particle.variable("Emon_raw_Pinout",Emon);
@@ -60,7 +60,7 @@ Particle.publish("output", "MD_power: " + String(Modern) + " Volts: " + String(v
 delay(3000);
 }
 
-double ModernCal(String command)
+float ModernCal(String command)
 {
   // Parse 
   
