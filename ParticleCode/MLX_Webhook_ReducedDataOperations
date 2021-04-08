@@ -1,0 +1,56 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <Adafruit_MLX90614.h>
+
+#include "Particle.h"
+
+/* USER INPUT */
+int publish_rate = 1 * 1000; // how often you want device to publish to google sheets data log, in milliseconds
+const char *eventName = "LoraxArgon_Gsheets_DataLog"; // event name of webhook integration on console
+/**/
+
+unsigned long lastPublish; // timestamp of last time a Gsheets event was published
+void publishGsheetsEvent(); // function to format and publish sensor temp data to Gsheets event
+
+double objectT = 0; // declaration of variable for temperature read from an object surface with MLX90614
+double ambientT = 0; // declaration of variable for ambient temperature read with MLX90614
+
+
+Adafruit_MLX90614 mlx = Adafruit_MLX90614(); // declaration of sensor object, as a variable called mlx
+
+void setup() {
+    
+    Particle.variable("object", objectT);
+    Particle.variable("ambient", ambientT);
+
+    mlx.begin(); // initialize the MLX90614 sensor, see Adafruit_MLX90614.cpp for more info
+}
+
+
+void loop() {
+    
+        ambientT = mlx.readAmbientTempC(); // read ambient temp data from sensor
+        objectT = mlx.readObjectTempC(); // read object temp data from sensor
+    
+    // Only run code if Argon is connected to the Cloud
+    if (Particle.connected()) {
+        
+        // millis() gives the current system clock in milliseconds. 
+        // The if statement comparies how long it has been since the last Gsheets event to the publish rate, and runs PublishGsheetsEvent() if longer than publish_rate
+        // The advantage of this method (though more complicated and memory intensive), is that other code can run while waiting for a Gsheets publish event
+        // Conversely, delay() will not allow any other code to execute while it waits for its timer to finish.
+        if (millis() - lastPublish >= publish_rate) {
+            lastPublish = millis();
+            publishGsheetsEvent();
+        }
+
+        delay(10); // Delay at least 10 milliseconds to reduce processing
+    }
+}
+
+// Function to format and publish temp data to the Gsheets event
+void publishGsheetsEvent() {
+    char buf[128];
+    snprintf(buf, sizeof(buf), "[%.2f,%.2f]", objectT, ambientT); // Format temp data for the google sheet
+    
+    Particle.publish(eventName, buf, PRIVATE); // Publish with the name used for the webhook integration
+}
